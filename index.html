@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>圣诞树</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #161616;
+            touch-action: pan-x pan-y;
+        }
+ 
+        .message {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #fff;
+            font-family: 'Brush Script MT', cursive;
+            text-align: left;
+            text-shadow: 0 0 15px rgba(255,255,255,0.6),
+                         0 0 30px rgba(255,255,255,0.4),
+                         0 0 45px rgba(255,255,255,0.2);
+            pointer-events: none;
+            z-index: 1000;
+            transition: transform 0.3s ease-out;
+        }
+ 
+        .message h1 {
+            font-size: 32px;
+            margin: 0;
+            opacity: 0;
+            animation: fadeInLeft 2s ease-out forwards;
+            letter-spacing: 1px;
+        }
+ 
+        .message p {
+            font-size: 20px;
+            margin: 15px 0;
+            opacity: 0;
+            animation: fadeInLeft 2s ease-out 1s forwards;
+        }
+ 
+        @keyframes fadeInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-40px) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+        }
+ 
+        .author {
+            position: fixed;
+            right: 20px;
+            bottom: 30px;
+            color: #fff;
+            font-family: 'Brush Script MT', cursive;
+            text-align: right;
+            text-shadow: 0 0 15px rgba(255,255,255,0.6),
+                         0 0 30px rgba(255,255,255,0.4),
+                         0 0 45px rgba(255,255,255,0.2);
+            pointer-events: auto;
+            z-index: 1000;
+        }
+ 
+        .author p {
+            font-size: 18px;
+            margin: 0;
+            opacity: 0;
+            animation: fadeIn 2s ease-out 1.5s forwards;
+        }
+ 
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(40px) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+        }
+
+        /* 移动端控制提示 */
+        .mobile-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            text-align: center;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            animation: fadeIn 2s ease-out 2s forwards;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .message {
+                left: 15px;
+            }
+            
+            .message h1 {
+                font-size: 28px;
+            }
+            
+            .message p {
+                font-size: 18px;
+                margin: 10px 0;
+            }
+            
+            .author {
+                right: 15px;
+                bottom: 20px;
+            }
+            
+            .author p {
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .message {
+                left: 10px;
+                top: 40%;
+            }
+            
+            .message h1 {
+                font-size: 24px;
+            }
+            
+            .message p {
+                font-size: 16px;
+                margin: 8px 0;
+            }
+            
+            .author {
+                right: 10px;
+                bottom: 15px;
+            }
+            
+            .author p {
+                font-size: 14px;
+            }
+
+            .mobile-controls {
+                font-size: 10px;
+                bottom: 10px;
+            }
+        }
+
+        /* 触摸旋转提示 */
+        .rotate-hint {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            text-align: center;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            animation: fadeIn 2s ease-out 2.5s forwards;
+        }
+
+        @media (min-width: 769px) {
+            .rotate-hint,
+            .mobile-controls {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.115.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.115.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.115.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.115.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.115.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.115.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.115.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+ 
+    <script>
+        const { PI, sin, cos } = Math;
+        const TAU = 2 * PI;
+ 
+        const map = (value, sMin, sMax, dMin, dMax) => {
+            return dMin + (value - sMin) / (sMax - sMin) * (dMax - dMin);
+        };
+ 
+        const rand = (max, min = 0) => min + Math.random() * (max - min);
+        const randChoise = arr => arr[Math.floor(Math.random() * arr.length)];
+        const polar = (ang, r = 1) => [r * cos(ang), r * sin(ang)];
+ 
+        // 检测移动端
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+ 
+        let scene, camera, renderer;
+        let step = 0;
+        const uniforms = {
+            time: { type: "f", value: 0.0 },
+            step: { type: "f", value: 0.0 }
+        };
+ 
+        const params = {
+            exposure: 1,
+            bloomStrength: isMobile ? 1.2 : 1.5,
+            bloomThreshold: 0,
+            bloomRadius: isMobile ? 0.5 : 0.7
+        };
+ 
+        let composer;
+        const totalPoints = isMobile ? 2000 : 4000;
+        let treePoints;
+        let groundPoints;
+ 
+        let rotationSpeed = 0.002;
+        let isSpacePressed = false;
+ 
+        let isFlashing = false;
+        let originalStrength, originalThreshold;
+ 
+        let isDecorationsDancing = false;
+ 
+        let isSnowBig = false;
+ 
+        let cameraMode = 0;
+        let isTreeGreen = false;
+
+        // 移动端触摸控制
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isDragging = false;
+        let autoRotationSpeed = 0.002;
+        let manualRotationSpeed = 0;
+        let touchTimeout = null;
+
+        // 移动端双击控制
+        let lastTouchTime = 0;
+        let doubleTapTimeout = null;
+ 
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !isSpacePressed) {
+                isSpacePressed = true;
+                rotationSpeed = 0.01;
+            }
+            
+            if (e.code === 'KeyA') {
+                isFlashing = !isFlashing;
+                if (isFlashing) {
+                    originalStrength = params.bloomStrength;
+                    originalThreshold = params.bloomThreshold;
+                    params.bloomStrength = isMobile ? 2.0 : 3.0;
+                    params.bloomThreshold = 0;
+                } else {
+                    params.bloomStrength = originalStrength;
+                    params.bloomThreshold = originalThreshold;
+                }
+                composer.passes[1].strength = params.bloomStrength;
+                composer.passes[1].threshold = params.bloomThreshold;
+            }
+ 
+            if (e.code === 'KeyR') {
+                const geometry = treePoints.geometry;
+                const colors = geometry.attributes.color.array;
+                const color = new THREE.Color();
+                
+                for (let i = 0; i < colors.length; i += 3) {
+                    if (i / colors.length > 0.1) {  // 只改变树叶的颜色
+                        color.setHSL(0.0, 0.8, 0.5);  // 红色
+                        colors[i] = color.r;
+                        colors[i + 1] = color.g;
+                        colors[i + 2] = color.b;
+                    }
+                }
+                geometry.attributes.color.needsUpdate = true;
+            }
+ 
+            if (e.code === 'KeyD') {
+                isDecorationsDancing = !isDecorationsDancing;
+            }
+ 
+            if (e.code === 'KeyS') {
+                isSnowBig = !isSnowBig;
+                scene.children.forEach(child => {
+                    if (child.material && child.material.uniforms && child.material.uniforms.time) {
+                        const sizes = child.geometry.attributes.size.array;
+                        for (let i = 0; i < sizes.length; i++) {
+                            sizes[i] = isSnowBig ? sizes[i] * (isMobile ? 1.5 : 2) : sizes[i] / (isMobile ? 1.5 : 2);
+                        }
+                        child.geometry.attributes.size.needsUpdate = true;
+                    }
+                });
+            }
+ 
+            if (e.code === 'KeyC') {
+                cameraMode = (cameraMode + 1) % 3;
+                updateCameraPosition();
+            }
+ 
+            if (e.code === 'KeyY') {
+                const geometry = treePoints.geometry;
+                const colors = geometry.attributes.color.array;
+                const color = new THREE.Color();
+                
+                isTreeGreen = !isTreeGreen;
+                
+                for (let i = 0; i < colors.length; i += 3) {
+                    const t = i / colors.length;
+                    if (isTreeGreen) {
+                        if (t < 0.1) {
+                            color.setHSL(0.15, 0.8, 0.5);  // 树干颜色（黄色）
+                        } else {
+                            const brightness = map(t, 0.1, 1, 0.85, 0.95);
+                            color.setHSL(0.3, 0.9, brightness);  // 树叶颜色（绿色）
+                        }
+                    } else {
+                        if (t < 0.1) {
+                            color.setHSL(0, 0, 0.3);  // 更淡的原始树干颜色
+                        } else {
+                            const brightness = map(t, 0.1, 1, 0.7, 0.9);
+                            color.setHSL(0, 0, brightness);  // 原始树叶颜色
+                        }
+                    }
+                    colors[i] = color.r;
+                    colors[i + 1] = color.g;
+                    colors[i + 2] = color.b;
+                }
+                geometry.attributes.color.needsUpdate = true;
+            }
+        });
+ 
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') {
+                isSpacePressed = false;
+                rotationSpeed = 0.002;
+            }
+        });
+
+        // 移动端触摸事件处理
+        document.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            isDragging = true;
+            
+            // 双击检测
+            const currentTime = new Date().getTime();
+            const timeSinceLastTouch = currentTime - lastTouchTime;
+            
+            if (timeSinceLastTouch < 300 && timeSinceLastTouch > 0) {
+                // 双击 - 切换相机模式
+                clearTimeout(doubleTapTimeout);
+                cameraMode = (cameraMode + 1) % 3;
+                updateCameraPosition();
+                showMobileMessage('视角已切换');
+            }
+            
+            lastTouchTime = currentTime;
+            
+            // 重置自动旋转速度
+            autoRotationSpeed = 0;
+            
+            // 清除之前的触摸超时
+            if (touchTimeout) {
+                clearTimeout(touchTimeout);
+            }
+            
+            // 设置触摸结束超时
+            touchTimeout = setTimeout(() => {
+                isDragging = false;
+                autoRotationSpeed = 0.002;
+            }, 100);
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            
+            if (!isDragging || e.touches.length !== 1) return;
+            
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - touchStartX;
+            
+            // 根据移动速度计算旋转速度
+            manualRotationSpeed = deltaX * 0.0005;
+            
+            touchStartX = touch.clientX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            
+            isDragging = false;
+            
+            // 惯性旋转效果
+            if (manualRotationSpeed !== 0) {
+                const deceleration = 0.95;
+                const animateInertia = () => {
+                    manualRotationSpeed *= deceleration;
+                    if (Math.abs(manualRotationSpeed) < 0.0001) {
+                        manualRotationSpeed = 0;
+                        autoRotationSpeed = 0.002;
+                        return;
+                    }
+                    requestAnimationFrame(animateInertia);
+                };
+                animateInertia();
+            } else {
+                autoRotationSpeed = 0.002;
+            }
+        });
+
+        // 移动端显示提示信息
+        function showMobileMessage(message) {
+            const hint = document.createElement('div');
+            hint.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 20px;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+                z-index: 2000;
+                pointer-events: none;
+                transition: opacity 0.3s;
+            `;
+            hint.textContent = message;
+            document.body.appendChild(hint);
+            
+            setTimeout(() => {
+                hint.style.opacity = '0';
+                setTimeout(() => {
+                    document.body.removeChild(hint);
+                }, 300);
+            }, 1500);
+        }
+
+        // 更新相机位置
+        function updateCameraPosition() {
+            switch(cameraMode) {
+                case 0:  // 正面视角（移动端调整更近）
+                    camera.position.set(
+                        0, 
+                        isMobile ? -1 : -2, 
+                        isMobile ? 35 : 42
+                    );
+                    camera.rotation.set(isMobile ? 0.08 : 0.12, 0, 0);
+                    break;
+                case 1:  // 俯视角
+                    camera.position.set(0, isMobile ? 40 : 50, 0);
+                    camera.rotation.set(-Math.PI/2, 0, 0);
+                    break;
+                case 2:  // 侧面视角
+                    camera.position.set(isMobile ? 35 : 42, isMobile ? -1 : -2, 0);
+                    camera.rotation.set(isMobile ? 0.08 : 0.12, Math.PI/2, 0);
+                    break;
+            }
+        }
+ 
+        init();
+        animate();
+ 
+        function init() {
+            scene = new THREE.Scene();
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                alpha: true,
+                powerPreference: "high-performance"
+            });
+            
+            // 移动端优化
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // 移动端性能优化
+            if (isMobile) {
+                renderer.gammaFactor = 2.2;
+                renderer.gammaOutput = true;
+            }
+            
+            document.body.appendChild(renderer.domElement);
+ 
+            camera = new THREE.PerspectiveCamera(
+                isMobile ? 70 : 60,  // 移动端视野更广
+                window.innerWidth / window.innerHeight,
+                1,
+                1000
+            );
+            
+            updateCameraPosition();
+ 
+            scene.position.x = 0;
+            scene.position.z = 1;
+ 
+            // 根据设备调整点数
+            const treeScale = isMobile ? 0.8 : 1;
+            addTree(scene, uniforms, totalPoints, [0, 0, 0], treeScale);
+            addDecorations(scene, uniforms, isMobile ? 100 : 150);
+            addSnow(scene, uniforms, isMobile ? 400 : 600);
+            addPlane(scene, uniforms, isMobile ? 2000 : 3000);
+ 
+            const renderScene = new THREE.RenderPass(scene, camera);
+            const bloomPass = new THREE.UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                params.bloomStrength,
+                params.bloomRadius,
+                params.bloomThreshold
+            );
+ 
+            bloomPass.threshold = params.bloomThreshold;
+            bloomPass.strength = params.bloomStrength;
+            bloomPass.radius = params.bloomRadius;
+ 
+            composer = new THREE.EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+ 
+            window.addEventListener('resize', onWindowResize, false);
+            
+            // 添加移动端控制提示
+            if (isTouchDevice) {
+                const controlsHint = document.createElement('div');
+                controlsHint.className = 'mobile-controls';
+                controlsHint.innerHTML = '触摸旋转 · 双击切换视角';
+                document.body.appendChild(controlsHint);
+                
+                const rotateHint = document.createElement('div');
+                rotateHint.className = 'rotate-hint';
+                rotateHint.innerHTML = '左右滑动旋转圣诞树';
+                document.body.appendChild(rotateHint);
+            }
+        }
+ 
+        function animate(time) {
+            step = (step + 1) % 1000;
+            uniforms.time.value = time;
+            uniforms.step.value = step;
+            
+            if (treePoints) {
+                // 结合自动旋转和手动旋转
+                const currentRotationSpeed = autoRotationSpeed + manualRotationSpeed;
+                treePoints.rotation.y += currentRotationSpeed;
+                
+                if (groundPoints) {
+                    groundPoints.rotation.y = treePoints.rotation.y;
+                }
+            }
+            
+            if (isDecorationsDancing) {
+                scene.children.forEach(child => {
+                    if (child.material && child.material.uniforms && child.material.uniforms.time) {
+                        const positions = child.geometry.attributes.position.array;
+                        for (let i = 0; i < positions.length; i += 3) {
+                            positions[i] += Math.sin(time * 0.001 + positions[i+1]) * 0.02;
+                            positions[i+2] += Math.cos(time * 0.001 + positions[i+1]) * 0.02;
+                        }
+                        child.geometry.attributes.position.needsUpdate = true;
+                    }
+                });
+            }
+            
+            composer.render();
+            requestAnimationFrame(animate);
+        }
+ 
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+            
+            // 移动端重新调整相机
+            if (isMobile) {
+                updateCameraPosition();
+            }
+        }
+ 
+        function addTree(scene, uniforms, totalPoints, treePosition, scale = 1) {
+            const vertexShader = `
+    attribute float mIndex;
+    varying vec3 vColor;
+    varying float opacity;
+    
+    float norm(float value, float min, float max ){
+        return (value - min) / (max - min);
+    }
+    float lerp(float norm, float min, float max){
+        return (max - min) * norm + min;
+    }
+    float map(float value, float sourceMin, float sourceMax, float destMin, float destMax){
+        return lerp(norm(value, sourceMin, sourceMax), destMin, destMax);
+    }
+    void main() {
+        vColor = color;
+        vec3 p = position;
+        vec4 mvPosition = modelViewMatrix * vec4( p, 1.0 );
+        opacity = map(mvPosition.z , -200.0, 15.0, 0.0, 1.0);
+        gl_PointSize = ${isMobile ? '2.0' : '4.0'} * ( 100.0 / -mvPosition.z );
+        gl_Position = projectionMatrix * mvPosition;
+    }
+    `;
+            const fragmentShader = `
+    varying vec3 vColor;
+    varying float opacity;
+    uniform sampler2D pointTexture;
+    void main() {
+        gl_FragColor = vec4( vColor, opacity );
+        gl_FragColor = gl_FragColor * texture2D( pointTexture, gl_PointCoord ); 
+    }
+    `;
+            const shaderMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    pointTexture: {
+                        value: new THREE.TextureLoader().load(`https://assets.codepen.io/3685267/spark1.png`)
+                    }
+                },
+                vertexShader,
+                fragmentShader,
+                blending: THREE.AdditiveBlending,
+                depthTest: false,
+                transparent: true,
+                vertexColors: true
+            });
+ 
+ 
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            const sizes = [];
+            const phases = [];
+            const mIndexs = [];
+            const color = new THREE.Color();
+ 
+            for (let i = 0; i < totalPoints; i++) {
+                const randomT = Math.random();
+                
+                // 根据缩放调整高度和半径
+                const y = map(randomT, 0, 1, -16 * scale, 20 * scale);
+                const ang = map(randomT, 0, 1, 0, 6 * TAU) + TAU / 2 * (i % 2);
+                
+                let radius;
+                if (randomT < 0.1) {
+                    radius = 2 * scale;
+                } else {
+                    const treeTop = (randomT - 0.1) / 0.9;
+                    radius = map(Math.pow(treeTop, 0.6), 0, 1, 15 * scale, 0);
+                }
+                const [z, x] = polar(ang, radius);
+ 
+                const modifier = randomT < 0.1 ? 0.2 : map(randomT, 0.1, 1, 1.5, 0.5);
+                positions.push(
+                    x + rand(-0.15 * modifier, 0.15 * modifier) * scale,
+                    y + rand(-0.1 * modifier, 0.1 * modifier) * scale,
+                    z + rand(-0.15 * modifier, 0.15 * modifier) * scale
+                );
+ 
+                // 初始白色树干
+                const t = map(i, 0, totalPoints, 0.0, 1.0);
+                if (t < 0.1) {
+                    // 树干颜色
+                    color.setHSL(0, 0, 0.7);  // 白色树干
+                } else {
+                    // 树叶颜色
+                    color.setHSL(0, 0, 0.9);  // 白色树叶
+                }
+ 
+                colors.push(color.r, color.g, color.b);
+                phases.push(rand(1000));
+                
+                // 调整点的大小也要考虑缩放
+                if (t < 0.1) {
+                    sizes.push(isMobile ? 1.8 : 2.5 * scale);
+                } else {
+                    const baseSize = map(t, 0.1, 1, 2.2, 1.6) * scale;
+                    sizes.push(baseSize * (1 + rand(-0.1, 0.1)) * (isMobile ? 0.8 : 1));
+                }
+                
+                const mIndex = map(i, 0, totalPoints, 1.0, 0.0);
+                mIndexs.push(mIndex);
+            }
+ 
+            geometry.setAttribute(
+                "position",
+                new THREE.Float32BufferAttribute(positions, 3).setUsage(
+                    THREE.DynamicDrawUsage));
+ 
+ 
+            geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+            geometry.setAttribute("size", new THREE.Float32BufferAttribute(sizes, 1));
+            geometry.setAttribute("phase", new THREE.Float32BufferAttribute(phases, 1));
+            geometry.setAttribute("mIndex", new THREE.Float32BufferAttribute(mIndexs, 1));
+ 
+            const tree = new THREE.Points(geometry, shaderMaterial);
+ 
+            const [px, py, pz] = treePosition;
+ 
+            tree.position.x = px;
+            tree.position.y = py;
+            tree.position.z = pz;
+ 
+            treePoints = tree;
+            scene.add(tree);
+        }
+ 
+        function addSnow(scene, uniforms, totalPoints) {
+            const vertexShader = `
+    attribute float size;
+    attribute float phase;
+    attribute float phaseSecondary;
+    varying vec3 vColor;
+    varying float opacity;
+    uniform float time;
+    uniform float step;
+    float norm(float value, float min, float max ){
+        return (value - min) / (max - min);
+    }
+    float lerp(float norm, float min, float max){
+        return (max - min) * norm + min;
+    }
+    float map(float value, float sourceMin, float sourceMax, float destMin, float destMax){
+        return lerp(norm(value, sourceMin, sourceMax), destMin, destMax);
+    }
+    
+    float random(float x) {
+        return fract(sin(x) * 43758.5453);
+    }
+    void main() {
+        float t = time * 0.0006;
+        vColor = color;
+        vec3 p = position;
+        
+        float yOffset = mod(phase + step, 1000.0);
+        p.y = map(yOffset, 0.0, 1000.0, 25.0, -8.0);
+        
+        float xOffset = sin(t + phase) * (random(phase) * 2.0 + 0.5);
+        float zOffset = cos(t + phaseSecondary) * (random(phaseSecondary) * 2.0 + 0.5);
+        
+        float rot = t * random(phase + phaseSecondary);
+        p.x += xOffset + sin(rot) * random(phase);
+        p.z += zOffset + cos(rot) * random(phaseSecondary);
+        
+        opacity = map(p.z, -150.0, 15.0, 0.0, 1.0);
+        vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
+        gl_PointSize = size * (${isMobile ? '80.0' : '100.0'} / -mvPosition.z);
+        gl_Position = projectionMatrix * mvPosition;
+    }
+    `;
+ 
+            const fragmentShader = `
+      uniform sampler2D pointTexture;
+      varying vec3 vColor;
+      varying float opacity;
+      void main() {
+       gl_FragColor = vec4( vColor, opacity );
+       gl_FragColor = gl_FragColor * texture2D( pointTexture, gl_PointCoord ); 
+      }
+      `;
+            function createSnowSet(sprite) {
+                const totalPoints = isMobile ? 400 : 600;
+                const shaderMaterial = new THREE.ShaderMaterial({
+                    uniforms: {
+                        ...uniforms,
+                        pointTexture: {
+                            value: new THREE.TextureLoader().load(sprite)
+                        }
+                    },
+ 
+ 
+                    vertexShader,
+                    fragmentShader,
+                    blending: THREE.AdditiveBlending,
+                    depthTest: false,
+                    transparent: true,
+                    vertexColors: true
+                });
+ 
+ 
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const colors = [];
+                const sizes = [];
+                const phases = [];
+                const phaseSecondaries = [];
+ 
+                const color = new THREE.Color();
+ 
+                for (let i = 0; i < totalPoints; i++) {
+                    const [x, y, z] = [rand(80, -80), 0, rand(60, -300)];
+                    positions.push(x);
+                    positions.push(y);
+                    positions.push(z);
+ 
+                    if (Math.random() > 0.75) {
+                        // 25%的大雪花
+                        color.set(randChoise(["#ffffff", "#ffffff", "#fafaff"]));
+                        sizes.push(rand(isMobile ? 4 : 6, isMobile ? 2.5 : 4));
+                    } else if (Math.random() > 0.5) {
+                        // 25%的中等雪花
+                        color.set(randChoise(["#ffffff", "#f8f8ff"]));
+                        sizes.push(rand(isMobile ? 2.5 : 4, isMobile ? 1.5 : 2.5));
+                    } else {
+                        // 50%的小雪花
+                        color.set(randChoise(["#f1f6f9", "#eeeeee", "#e8e8e8"]));
+                        sizes.push(rand(isMobile ? 1.5 : 2.5, isMobile ? 0.8 : 1.5));
+                    }
+                    
+                    colors.push(color.r, color.g, color.b);
+                    phases.push(rand(1000));
+                    phaseSecondaries.push(rand(1000));
+                }
+ 
+                geometry.setAttribute(
+                    "position",
+                    new THREE.Float32BufferAttribute(positions, 3));
+ 
+                geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+                geometry.setAttribute("size", new THREE.Float32BufferAttribute(sizes, 1));
+                geometry.setAttribute("phase", new THREE.Float32BufferAttribute(phases, 1));
+                geometry.setAttribute(
+                    "phaseSecondary",
+                    new THREE.Float32BufferAttribute(phaseSecondaries, 1));
+ 
+ 
+                const mesh = new THREE.Points(geometry, shaderMaterial);
+ 
+                scene.add(mesh);
+            }
+            const sprites = [
+                "https://assets.codepen.io/3685267/snowflake1.png",
+                "https://assets.codepen.io/3685267/snowflake2.png",
+                "https://assets.codepen.io/3685267/snowflake3.png",
+                "https://assets.codepen.io/3685267/snowflake4.png",
+                "https://assets.codepen.io/3685267/snowflake5.png"
+            ];
+ 
+            // 移动端减少雪花数量
+            const spriteCount = isMobile ? 3 : sprites.length;
+            for (let i = 0; i < spriteCount; i++) {
+                createSnowSet(sprites[i]);
+            }
+        }
+ 
+        function addPlane(scene, uniforms, totalPoints) {
+            const vertexShader = `
+        attribute float size;
+        attribute vec3 customColor;
+        varying vec3 vColor;
+        
+        void main() {
+            vColor = customColor;
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            gl_PointSize = size * (${isMobile ? '200.0' : '300.0'} / -mvPosition.z);
+            gl_Position = projectionMatrix * mvPosition;
+        }
+    `;
+ 
+            const fragmentShader = `
+        uniform vec3 color;
+        uniform sampler2D pointTexture;
+        varying vec3 vColor;
+        void main() {
+            gl_FragColor = vec4(vColor, 1.0);
+            gl_FragColor = gl_FragColor * texture2D(pointTexture, gl_PointCoord);
+        }
+    `;
+ 
+            const shaderMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    ...uniforms,
+                    pointTexture: {
+                        value: new THREE.TextureLoader().load(`https://assets.codepen.io/3685267/spark1.png`)
+                    }
+                },
+                vertexShader,
+                fragmentShader,
+                blending: THREE.AdditiveBlending,
+                depthTest: false,
+                transparent: true,
+                vertexColors: true
+            });
+ 
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            const sizes = [];
+            const color = new THREE.Color();
+ 
+            for (let i = 0; i < totalPoints; i++) {
+                // 使用更大的范围和更自然的分布
+                const angle = rand(0, TAU);
+                const r = Math.sqrt(rand(0, isMobile ? 1500 : 2500)); // 移动端减小范围
+                const [x, z] = polar(angle, r);
+                
+                positions.push(x);
+                positions.push(0);  // y 保持为 0
+                positions.push(z);
+ 
+                // 根据到中心的距离调整颜色和大小
+                const distanceFromCenter = Math.sqrt(x * x + z * z);
+                if (distanceFromCenter < (isMobile ? 20 : 25)) {  // 调整中心域
+                    color.set(randChoise(["#ffffff", "#fafaff", "#f8f8ff"]));
+                    sizes.push(rand(isMobile ? 1.6 : 2.2, isMobile ? 1.0 : 1.6));
+                } else {
+                    const brightness = map(distanceFromCenter, isMobile ? 20 : 25, isMobile ? 40 : 50, 0.95, 0.85);
+                    color.setHSL(0, 0, brightness);
+                    sizes.push(rand(isMobile ? 1.0 : 1.6, isMobile ? 0.6 : 0.9));
+                }
+ 
+                colors.push(color.r, color.g, color.b);
+            }
+ 
+            geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute("customColor", new THREE.Float32BufferAttribute(colors, 3));
+            geometry.setAttribute("size", new THREE.Float32BufferAttribute(sizes, 1));
+ 
+            const plane = new THREE.Points(geometry, shaderMaterial);
+            plane.position.y = -16;
+            groundPoints = plane;
+            scene.add(plane);
+        }
+ 
+        function addDecorations(scene, uniforms, totalPoints) {
+            const vertexShader = `
+                attribute float size;
+                varying vec3 vColor;
+                varying float opacity;
+                uniform float time;
+                
+                void main() {
+                    vColor = color;
+                    vec3 p = position;
+                    vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
+                    opacity = 0.7;
+                    float scale = 0.8 + sin(time * 0.001 + position.x) * 0.2;
+                    gl_PointSize = size * scale * (${isMobile ? '80.0' : '100.0'} / -mvPosition.z);
+                    gl_Position = projectionMatrix * mvPosition;
+                }
+            `;
+ 
+            const fragmentShader = `
+                varying vec3 vColor;
+                varying float opacity;
+                uniform sampler2D pointTexture;
+                void main() {
+                    gl_FragColor = vec4(vColor, opacity);
+                    gl_FragColor = gl_FragColor * texture2D(pointTexture, gl_PointCoord);
+                }
+            `;
+ 
+            const shaderMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    ...uniforms,
+                    pointTexture: {
+                        value: new THREE.TextureLoader().load(`https://assets.codepen.io/3685267/spark1.png`)
+                    }
+                },
+                vertexShader,
+                fragmentShader,
+                blending: THREE.AdditiveBlending,
+                depthTest: false,
+                transparent: true,
+                vertexColors: true
+            });
+ 
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            const sizes = [];
+            const color = new THREE.Color();
+ 
+            // 创建漂浮的光点
+            const decorationPoints = totalPoints;
+            for (let i = 0; i < decorationPoints; i++) {
+                const angle = (i / decorationPoints) * TAU;
+                const radius = (isMobile ? 12 : 15) + rand(-5, 5);
+                const height = rand(isMobile ? -10 : -12, isMobile ? 18 : 22);
+                const [x, z] = polar(angle, radius);
+ 
+                positions.push(x, height, z);
+ 
+                // 使用更丰富的颜色
+                if (Math.random() > 0.7) {
+                    // 金色
+                    const hue = rand(0.1, 0.15);
+                    const saturation = rand(0.7, 0.9);
+                    const lightness = rand(0.6, 0.8);
+                    color.setHSL(hue, saturation, lightness);
+                } else if (Math.random() > 0.4) {
+                    // 红色
+                    const hue = rand(0.95, 1.0);
+                    const saturation = rand(0.7, 0.9);
+                    const lightness = rand(0.5, 0.7);
+                    color.setHSL(hue, saturation, lightness);
+                } else {
+                    // 白色
+                    const lightness = rand(0.8, 0.95);
+                    color.setHSL(0, 0, lightness);
+                }
+                
+                colors.push(color.r, color.g, color.b);
+                sizes.push(rand(isMobile ? 2.0 : 2.5, isMobile ? 3.5 : 4.5));
+            }
+ 
+            geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+            geometry.setAttribute("size", new THREE.Float32BufferAttribute(sizes, 1));
+ 
+            const decorations = new THREE.Points(geometry, shaderMaterial);
+            scene.add(decorations);
+        }
+ 
+        document.addEventListener('DOMContentLoaded', () => {
+            const author = document.querySelector('.author');
+            const maxDistance = isMobile ? 100 : 150;
+            
+            document.addEventListener('mousemove', (e) => {
+                const authorRect = author.getBoundingClientRect();
+                const authorCenter = {
+                    x: authorRect.left + authorRect.width / 2,
+                    y: authorRect.top + authorRect.height / 2
+                };
+                
+                const authorDistance = Math.hypot(
+                    e.clientX - authorCenter.x,
+                    e.clientY - authorCenter.y
+                );
+                
+                if (authorDistance < maxDistance) {
+                    const angle = Math.atan2(
+                        authorCenter.y - e.clientY,
+                        authorCenter.x - e.clientX
+                    );
+                    const force = (maxDistance - authorDistance) / maxDistance;
+                    const moveX = Math.cos(angle) * force * 60;
+                    const moveY = Math.sin(angle) * force * 60;
+                    
+                    author.style.transform = `translate(${moveX}px, ${moveY}px)`;
+                    author.style.transition = 'transform 0.2s ease-out';
+                } else {
+                    author.style.transform = 'none';
+                    author.style.transition = 'transform 0.5s ease-out';
+                }
+            });
+
+            // 移动端触摸版交互
+            document.addEventListener('touchmove', (e) => {
+                if (!author || e.touches.length !== 1) return;
+                
+                const touch = e.touches[0];
+                const authorRect = author.getBoundingClientRect();
+                const authorCenter = {
+                    x: authorRect.left + authorRect.width / 2,
+                    y: authorRect.top + authorRect.height / 2
+                };
+                
+                const authorDistance = Math.hypot(
+                    touch.clientX - authorCenter.x,
+                    touch.clientY - authorCenter.y
+                );
+                
+                if (authorDistance < maxDistance) {
+                    const angle = Math.atan2(
+                        authorCenter.y - touch.clientY,
+                        authorCenter.x - touch.clientX
+                    );
+                    const force = (maxDistance - authorDistance) / maxDistance;
+                    const moveX = Math.cos(angle) * force * 40; // 移动端减小移动距离
+                    const moveY = Math.sin(angle) * force * 40;
+                    
+                    author.style.transform = `translate(${moveX}px, ${moveY}px)`;
+                    author.style.transition = 'transform 0.1s ease-out';
+                } else {
+                    author.style.transform = 'none';
+                    author.style.transition = 'transform 0.3s ease-out';
+                }
+            }, { passive: true });
+        });
+    </script>
+ 
+    <div class="message">
+        <h1>Merry Christmas</h1>
+        <p>--To:黄笨猪</p>
+    </div>
+</body>
+</html>
